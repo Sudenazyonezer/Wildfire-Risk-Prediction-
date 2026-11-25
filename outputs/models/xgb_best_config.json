@@ -1,0 +1,11 @@
+{
+  "params": {
+    "learning_rate": 0.03,
+    "max_depth": 5,
+    "n_estimators": 600,
+    "subsample": 0.8
+  },
+  "threshold": 0.7386137843132019,
+  "scale_pos_weight": 41.794011544011546,
+  "use_latlon": true
+}
