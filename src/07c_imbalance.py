@@ -10,16 +10,13 @@ The test set is NOT used here.
 """
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import (average_precision_score, f1_score,
-                             precision_recall_curve, precision_score,
-                             recall_score)
 from sklearn.pipeline import Pipeline
 
 import config as C
+from evaluate import evaluate, find_best_threshold
 
 ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
@@ -47,22 +44,6 @@ def undersample(train, neg_per_pos, seed):
     return pd.concat([pos, neg_sampled]).sample(frac=1, random_state=seed)
 
 
-def compute_metrics(y_true, proba):
-    """TEMPORARY: replace with Person C's evaluate.py once available.
-    Threshold = the value that maximizes F1 on validation."""
-    pr_auc = average_precision_score(y_true, proba)
-    p, r, t = precision_recall_curve(y_true, proba)
-    f1 = 2 * p * r / (p + r + 1e-12)
-    thr = t[np.argmax(f1[:-1])]
-    pred = (proba >= thr).astype(int)
-    return {
-        "pr_auc": pr_auc,
-        "precision": precision_score(y_true, pred, zero_division=0),
-        "recall": recall_score(y_true, pred, zero_division=0),
-        "f1_macro": f1_score(y_true, pred, average="macro"),
-    }
-
-
 def run_strategy(name, train, val, features, neg_per_pos, class_weight, seeds):
     X_va, y_va = val[features], val[C.TARGET]
     runs = []
@@ -70,7 +51,11 @@ def run_strategy(name, train, val, features, neg_per_pos, class_weight, seeds):
         tr = train if neg_per_pos is None else undersample(train, neg_per_pos, seed)
         pipe = make_pipeline(class_weight, seed)
         pipe.fit(tr[features], tr[C.TARGET])
-        runs.append(compute_metrics(y_va, pipe.predict_proba(X_va)[:, 1]))
+        proba = pipe.predict_proba(X_va)[:, 1]
+        thr, _ = find_best_threshold(y_va, proba, mode="f1")   # shared function
+        res = evaluate(y_va, proba, threshold=thr, name=name)
+        res.pop("confusion_matrix")                            # keep numeric columns only
+        runs.append(res)
     df = pd.DataFrame(runs)
     row = {
         "strategy": name,
@@ -81,6 +66,7 @@ def run_strategy(name, train, val, features, neg_per_pos, class_weight, seeds):
         "precision": df["precision"].mean(),
         "recall": df["recall"].mean(),
         "f1_macro": df["f1_macro"].mean(),
+        "f1_weighted": df["f1_weighted"].mean(),
     }
     print(f"[OK] {name}: PR-AUC={row['pr_auc_mean']:.4f} (+/- {row['pr_auc_std']:.4f})")
     return row
@@ -95,7 +81,7 @@ def main():
     print(f"Random-guess PR-AUC (val) ~ {val[C.TARGET].mean():.4f}\n")
 
     rows = [
-        # class_weight on full data: deterministic given the seed, one run is enough
+        # class_weight on full data: one run is enough (std not defined -> reported as 0)
         run_strategy("class_weight=balanced (full data)", train, val, features,
                      None, "balanced", [C.RANDOM_STATE]),
         run_strategy("undersample 1:5 (no class weight)", train, val, features,

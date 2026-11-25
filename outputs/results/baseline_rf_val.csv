@@ -1,7 +1,7 @@
-model,n_features,pr_auc,threshold,precision,recall,f1_macro
-LogReg (13 features),13,0.1193,0.7543,0.1341,0.3705,0.5748
-RF depth=8 leaf=5 (no latlon),53,0.1457,0.7407,0.1673,0.3529,0.5949
-RF depth=8 leaf=20 (no latlon),53,0.1513,0.7521,0.18,0.331,0.5998
-RF depth=16 leaf=5 (no latlon),53,0.1332,0.5012,0.1611,0.3614,0.5919
-RF depth=16 leaf=20 (no latlon),53,0.1455,0.5723,0.1824,0.3344,0.6013
-RF depth=8 leaf=20 (WITH latlon),55,0.1698,0.7409,0.2343,0.3193,0.6219
+model,n_features,threshold,pr_auc,precision,recall,f1_macro,f1_weighted,tn,fp,fn,tp
+LogReg (13 features),13,0.7543,0.1193,0.1341,0.3705,0.5748,0.9304,107020,8413,2214,1303
+RF depth=8 leaf=5 (no latlon),53,0.7407,0.1457,0.1673,0.3529,0.5949,0.941,109255,6178,2276,1241
+RF depth=8 leaf=20 (no latlon),53,0.7521,0.1513,0.18,0.331,0.5998,0.9447,110130,5303,2353,1164
+RF depth=16 leaf=5 (no latlon),53,0.5012,0.1332,0.1611,0.3614,0.5919,0.939,108814,6619,2246,1271
+RF depth=16 leaf=20 (no latlon),53,0.5723,0.1455,0.1824,0.3344,0.6013,0.945,110162,5271,2341,1176
+RF depth=8 leaf=20 (WITH latlon),55,0.7409,0.1698,0.2343,0.3193,0.6219,0.9528,111762,3671,2394,1123
