@@ -1,9 +1,9 @@
 """
-Aşama 3 - Zaman bazlı ayrım (Kişi B)
-Girdi : data/processed/features_table.csv
-Çıktı : data/processed/train.csv (2023), val.csv (2024), test.csv (2025)
+Stage 3 - Time-based split (Person B)
+Input  : data/processed/features_table.csv
+Output : data/processed/train.csv (2023), val.csv (2024), test.csv (2025)
 
-Çalıştır (proje kökünden):  python src/06_split_preprocess.py
+Run (from project root): python src/06_split_preprocess.py
 """
 from pathlib import Path
 
@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
 TARGET = "fire_occurrence"
 
-# Ortak karar: ayarlama için 2023 train / 2024 val, final için 2023-24 train / 2025 test
+# Joint decision: 2023 train / 2024 val for tuning, 2023-24 train / 2025 test for final
 SPLIT_YEARS = {
     "train": [2023],
     "val": [2024],
@@ -23,7 +23,7 @@ SPLIT_YEARS = {
 
 def load():
     df = pd.read_csv(PROCESSED / "features_table.csv", parse_dates=["date"])
-    print(f"Yüklendi: {df.shape}")
+    print(f"Loaded: {df.shape}")
     return df
 
 
@@ -33,18 +33,18 @@ def split_by_year(df):
 
 
 def check_splits(splits, full_len):
-    # 1) Hiçbir satır kaybolmadı mı?
+    # 1) Are any rows missing?
     total = sum(len(s) for s in splits.values())
-    assert total == full_len, f"Satır kaybı: {total} != {full_len}"
+    assert total == full_len, f"Row loss: {total} != {full_len}"
 
-    # 2) Zaman sırası doğru mu? (train < val < test, çakışma yok)
+    # 2) Is the chronological order correct? (train < val < test, no overlap)
     assert splits["train"]["date"].max() < splits["val"]["date"].min()
     assert splits["val"]["date"].max() < splits["test"]["date"].min()
 
-    # 3) Her sette aynı hücreler var mı? (zaman bazlı ayrımda olmalı)
+    # 3) Do all sets contain the same cells? (required for time-based split)
     cells = {n: set(s["cell_id"]) for n, s in splits.items()}
-    assert cells["train"] == cells["val"] == cells["test"], "Hücre kümeleri farklı!"
-    print("[OK] Satır kaybı yok, tarihler çakışmıyor, hücre kümeleri aynı.")
+    assert cells["train"] == cells["val"] == cells["test"], "Cell sets do not match!"
+    print("[OK] No row loss, dates do not overlap, cell sets are identical.")
 
 
 def report(splits):
@@ -52,11 +52,11 @@ def report(splits):
     for name, s in splits.items():
         rows.append({
             "set": name,
-            "satir": len(s),
-            "pozitif": int(s[TARGET].sum()),
-            "pozitif_oran_%": round(100 * s[TARGET].mean(), 2),
-            "baslangic": s["date"].min().date(),
-            "bitis": s["date"].max().date(),
+            "rows": len(s),
+            "positive": int(s[TARGET].sum()),
+            "positive_rate_%": round(100 * s[TARGET].mean(), 2),
+            "start_date": s["date"].min().date(),
+            "end_date": s["date"].max().date(),
         })
     print("\n" + pd.DataFrame(rows).to_string(index=False))
 
@@ -69,7 +69,7 @@ def main():
 
     for name, s in splits.items():
         s.to_csv(PROCESSED / f"{name}.csv", index=False)
-        print(f"[OK] {name}.csv kaydedildi")
+        print(f"[OK] {name}.csv saved")
 
 
 if __name__ == "__main__":

@@ -1,11 +1,11 @@
 """
-Aşama 3 - Baseline ve Random Forest (Kişi B)
-Girdi : data/processed/train.csv (2023), val.csv (2024)
-Çıktı : outputs/results/baseline_rf_val.csv
+Stage 3 - Baseline and Random Forest (Person B)
+Input  : data/processed/train.csv (2023), val.csv (2024)
+Output : outputs/results/baseline_rf_val.csv
 
-Çalıştır (proje kökünden):  python src/07_baseline_rf.py
+Run (from project root): python src/07_baseline_rf.py
 
-NOT: Test seti bu scriptte KULLANILMAZ. Model seçimi sadece val üzerinde yapılır.
+NOTE: The test set is NOT USED in this script. Model selection is performed solely on val.
 """
 import itertools
 from pathlib import Path
@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
 RESULTS = ROOT / "outputs" / "results"
 
-# Küçük hiperparametre ızgarası (RF)
+# Small hyperparameter grid (RF)
 RF_GRID = {
     "max_depth": [8, 16],
     "min_samples_leaf": [5, 20],
@@ -35,19 +35,19 @@ RF_GRID = {
 RF_TREES = 200
 
 
-# ---------- Yardımcılar ----------
+# ---------- Helpers ----------
 def load(name):
     return pd.read_csv(PROCESSED / f"{name}.csv")
 
 
 def get_xy(df, features):
-    # Güvenlik: yasaklı sütun (kimlik, tarih, sızıntı) özellik listesine girmiş mi?
-    assert not set(features) & set(C.DROP_COLS), "Yasaklı sütun özellik listesinde!"
+    # Safety check: has any forbidden column (id, date, leakage) entered the feature list?
+    assert not set(features) & set(C.DROP_COLS), "Forbidden column in feature list!"
     return df[features], df[C.TARGET]
 
 
 def make_pipeline(model, scale=False):
-    """Imputer (medyan) -> [Scaler] -> model. Hepsi SADECE train'den öğrenilir."""
+    """Imputer (median) -> [Scaler] -> model. All fitted ONLY on train."""
     steps = [("imputer", SimpleImputer(strategy="median"))]
     if scale:
         steps.append(("scaler", StandardScaler()))
@@ -57,8 +57,8 @@ def make_pipeline(model, scale=False):
 
 def compute_metrics(y_true, proba):
     """
-    GEÇİCİ: C'nin evaluate.py'si gelince bu fonksiyonu onunla değiştir.
-    Eşik, val üzerinde F1'i (pozitif sınıf) maksimize eden değerdir.
+    TEMPORARY: Replace this function once C's evaluate.py is ready.
+    Threshold is the value that maximizes F1 (positive class) on val.
     """
     pr_auc = average_precision_score(y_true, proba)
     p, r, t = precision_recall_curve(y_true, proba)
@@ -93,25 +93,25 @@ def new_rf(depth, leaf):
     )
 
 
-# ---------- Ana akış ----------
+# ---------- Main flow ----------
 def main():
     train, val = load("train"), load("val")
     print(f"train={train.shape}, val={val.shape}")
     random_pr_auc = val[C.TARGET].mean()
-    print(f"Rastgele tahmin PR-AUC (val) ~ {random_pr_auc:.4f}\n")
+    print(f"Random guess PR-AUC (val) ~ {random_pr_auc:.4f}\n")
 
     rows = []
 
-    # 1) Lojistik regresyon (basit referans)
+    # 1) Logistic regression (simple baseline)
     logreg = LogisticRegression(class_weight="balanced", max_iter=1000,
                                 random_state=C.RANDOM_STATE)
-    rows.append(fit_and_score("LogReg (13 ozellik)", C.FEATURES_LOGREG,
+    rows.append(fit_and_score("LogReg (13 features)", C.FEATURES_LOGREG,
                               logreg, True, train, val))
 
-    # 2) Random Forest: ızgara, seçim val PR-AUC'ye göre
+    # 2) Random Forest: grid search, selection based on val PR-AUC
     best = None
     for depth, leaf in itertools.product(RF_GRID["max_depth"], RF_GRID["min_samples_leaf"]):
-        name = f"RF depth={depth} leaf={leaf} (latlon yok)"
+        name = f"RF depth={depth} leaf={leaf} (no latlon)"
         row = fit_and_score(name, C.FEATURES_NO_LATLON, new_rf(depth, leaf),
                             False, train, val)
         row["_depth"], row["_leaf"] = depth, leaf
@@ -119,8 +119,8 @@ def main():
         if best is None or row["pr_auc"] > best["pr_auc"]:
             best = row
 
-    # 3) En iyi RF'yi lat/lon ile dene (konum ezberleme kontrolü)
-    name = f"RF depth={best['_depth']} leaf={best['_leaf']} (latlon VAR)"
+    # 3) Try best RF with lat/lon (location memorization check)
+    name = f"RF depth={best['_depth']} leaf={best['_leaf']} (WITH latlon)"
     rows.append(fit_and_score(name, C.FEATURES_WITH_LATLON,
                               new_rf(best["_depth"], best["_leaf"]),
                               False, train, val))
@@ -129,8 +129,8 @@ def main():
     RESULTS.mkdir(parents=True, exist_ok=True)
     result.to_csv(RESULTS / "baseline_rf_val.csv", index=False)
     print("\n" + result.to_string(index=False))
-    print(f"\nRastgele tahmin PR-AUC (val) ~ {random_pr_auc:.4f}")
-    print("[OK] outputs/results/baseline_rf_val.csv kaydedildi")
+    print(f"\nRandom guess PR-AUC (val) ~ {random_pr_auc:.4f}")
+    print("[OK] outputs/results/baseline_rf_val.csv saved")
 
 
 if __name__ == "__main__":
