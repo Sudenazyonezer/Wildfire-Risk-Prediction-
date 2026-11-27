@@ -1,5 +1,5 @@
 """
-Stage 3 - Test-set predictions for Person C (Person B)
+Stage 3 - Test-set predictions 
 Input : data/processed/train.csv (2023), val.csv (2024), test.csv (2025)
 Output: outputs/test_pred_baseline.csv     (LogReg, 13 features)
         outputs/test_pred_rf.csv           (RF depth=8 leaf=20, WITH lat/lon: best on validation)
@@ -29,7 +29,7 @@ from evaluate import find_best_threshold
 
 ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
-OUT = ROOT / "outputs"
+OUT = ROOT / "outputs" / "results"
 
 RF_DEPTH, RF_LEAF, RF_TREES = 8, 20, 200   # best setting from 07 on validation
 
