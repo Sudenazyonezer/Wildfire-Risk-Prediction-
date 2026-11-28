@@ -1,0 +1,8 @@
+,mean_abs_group_shap
+Humidity / VPD / ET0,0.8396062
+Location & terrain,0.82488143
+Precipitation / dryness,0.5535809
+Seasonality,0.41547558
+Soil moisture,0.27018818
+Temperature,0.25385442
+Wind,0.09931215
